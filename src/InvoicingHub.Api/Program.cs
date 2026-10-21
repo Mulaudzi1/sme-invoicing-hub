@@ -8,6 +8,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<SupplierSettings>(builder.Configuration.GetSection("Supplier"));
 builder.Services.Configure<ReminderSettings>(builder.Configuration.GetSection("Reminders"));
 builder.Services.Configure<PayFastOptions>(builder.Configuration.GetSection("PayFast"));
+
+// Fail closed: refuse to start in PayFast live mode without a passphrase or real merchant credentials.
+var payFastProblems = (builder.Configuration.GetSection("PayFast").Get<PayFastOptions>() ?? new PayFastOptions()).LiveConfigProblems();
+if (payFastProblems.Count > 0)
+    throw new InvalidOperationException("Unsafe PayFast live configuration: " + string.Join(" ", payFastProblems));
 builder.Services.AddDbContext<InvoicingDb>(o =>
     o.UseSqlite(builder.Configuration.GetConnectionString("Invoicing") ?? "Data Source=invoicing.db"));
 builder.Services.AddSingleton(TimeProvider.System);

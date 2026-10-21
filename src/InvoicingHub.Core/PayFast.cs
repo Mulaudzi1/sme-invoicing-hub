@@ -16,6 +16,27 @@ public sealed class PayFastOptions
     public string ProcessUrl => Sandbox
         ? "https://sandbox.payfast.co.za/eng/process"
         : "https://www.payfast.co.za/eng/process";
+
+    /// <summary>PayFast's published sandbox test merchant. Never valid in live mode.</summary>
+    public const string SandboxMerchantId = "10000100";
+
+    /// <summary>
+    /// Reasons this configuration is unsafe to run live. Empty in sandbox mode, where the published
+    /// test merchant and an empty passphrase are fine. Without a passphrase, live ITN signatures
+    /// would be forgeable by anyone who knows the merchant id.
+    /// </summary>
+    public IReadOnlyList<string> LiveConfigProblems()
+    {
+        var problems = new List<string>();
+        if (Sandbox) return problems;
+        if (string.IsNullOrWhiteSpace(Passphrase))
+            problems.Add("PayFast:Passphrase must be set when PayFast:Sandbox is false.");
+        if (string.IsNullOrWhiteSpace(MerchantId) || MerchantId.Trim() == SandboxMerchantId)
+            problems.Add("PayFast:MerchantId must be your live merchant id (not empty, not the sandbox test merchant).");
+        if (string.IsNullOrWhiteSpace(MerchantKey))
+            problems.Add("PayFast:MerchantKey must be set when PayFast:Sandbox is false.");
+        return problems;
+    }
 }
 
 /// <summary>Builds signed PayFast payment links and verifies ITN signatures.</summary>
