@@ -1,0 +1,15 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      Supplier__Name: "Demo Trading (Pty) Ltd"
+      Supplier__VatNumber: "4000000000"
+      PayFast__Sandbox: "true"
+      # Set real credentials via environment or a secrets store, never in git:
+      # PayFast__MerchantId, PayFast__MerchantKey, PayFast__Passphrase
+    volumes:
+      - invoicing-data:/data
+volumes:
+  invoicing-data:
