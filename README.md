@@ -10,7 +10,7 @@ Built with ASP.NET Core 8 minimal APIs, EF Core and SQLite. Runs in PayFast **sa
 - **SARS rules check** (VAT Act s20): full vs abridged tax invoice thresholds (R50 / R5,000), supplier VAT number, recipient name and address on full tax invoices, VAT number format
 - **Sequential numbering** per year (`INV-2026-0001`), assigned only when an invoice is issued
 - **Printable tax invoice** at `/api/invoices/{id}/html` (print or "Save as PDF" from the browser)
-- **PayFast integration**: signed payment links and an ITN endpoint that verifies the MD5 signature, checks the amount, and (outside sandbox) confirms with PayFast's validate endpoint
+- **PayFast integration**: signed payment links and an ITN endpoint that verifies the MD5 signature, checks the merchant id and the amount, and (outside sandbox) confirms with PayFast's validate endpoint
 - **Payment reminders**: a background service sends reminders 1, 7 and 14 days after the due date (configurable). The default sender logs; plug in email or WhatsApp by implementing `IReminderSender`
 - Swagger UI, health check, Dockerfile and docker-compose
 
@@ -61,7 +61,7 @@ curl $B/api/invoices/1/html > invoice.html   # printable tax invoice (open in a 
 dotnet test
 ```
 
-33 tests cover the VAT maths, SARS thresholds and checks, numbering, the reminder schedule, PayFast encoding and signatures, and the API end to end (issuing, validation errors, HTML output, ITN payment, reminders).
+The tests cover the VAT maths, SARS thresholds and checks, numbering, the reminder schedule, PayFast encoding and signatures, and the API end to end (issuing, validation errors, HTML output, ITN payment, reminders).
 
 ## Configuration
 

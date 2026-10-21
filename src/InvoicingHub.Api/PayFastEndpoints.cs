@@ -24,6 +24,13 @@ public static class PayFastEndpoints
                 return Results.BadRequest(new { message = "Invalid signature." });
             }
 
+            // The notification must be for our merchant account (QA I3).
+            if (string.IsNullOrEmpty(options.Value.MerchantId) || get("merchant_id") != options.Value.MerchantId)
+            {
+                logger.LogWarning("Rejected ITN for merchant {MerchantId}", get("merchant_id"));
+                return Results.BadRequest(new { message = "Unknown merchant." });
+            }
+
             // Outside sandbox mode, confirm the notification with PayFast server-to-server.
             if (!options.Value.Sandbox)
             {

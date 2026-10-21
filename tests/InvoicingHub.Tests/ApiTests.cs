@@ -113,6 +113,7 @@ public class ApiTests : IClassFixture<ApiFactory>
         {
             new("m_payment_id", invoice.Number!), new("pf_payment_id", "123456"),
             new("payment_status", "COMPLETE"), new("item_name", $"Invoice {invoice.Number}"), new("amount_gross", "575.00"),
+            new("merchant_id", "10000100"),
         };
         var signature = PayFastSigner.SignItn(fields, "test-passphrase");
         string Body(string sig) => string.Join("&", fields.Select(f => $"{f.Key}={PayFastSigner.Encode(f.Value)}")) + "&signature=" + sig;
@@ -135,7 +136,7 @@ public class ApiTests : IClassFixture<ApiFactory>
         {
             new("m_payment_id", invoice.Number!), new("pf_payment_id", "777"), new("payment_status", "COMPLETE"),
             new("item_name", $"Invoice {invoice.Number}"), new("item_description", ""), new("amount_gross", "115.00"),
-            new("name_first", "Test"), new("name_last", ""), new("custom_str1", ""),
+            new("name_first", "Test"), new("name_last", ""), new("custom_str1", ""), new("merchant_id", "10000100"),
         };
         var body = string.Join("&", fields.Select(f => $"{f.Key}={PayFastSigner.Encode(f.Value)}"))
             + "&signature=" + PayFastSigner.SignItn(fields, "test-passphrase");
@@ -143,6 +144,28 @@ public class ApiTests : IClassFixture<ApiFactory>
         Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
         var paid = await _client.GetFromJsonAsync<Invoice>($"/api/invoices/{invoice.Id}", Json);
         Assert.Equal(InvoiceStatus.Paid, paid!.Status);
+    }
+
+    [Theory]
+    [InlineData("99999999")]
+    [InlineData(null)]
+    public async Task Itn_for_another_merchant_is_rejected(string? merchantId)
+    {
+        var invoice = await CreateIssuedInvoice(100m);
+        var fields = new List<KeyValuePair<string, string>>
+        {
+            new("m_payment_id", invoice.Number!), new("pf_payment_id", "888"), new("payment_status", "COMPLETE"),
+            new("item_name", $"Invoice {invoice.Number}"), new("amount_gross", "115.00"),
+        };
+        if (merchantId != null) fields.Add(new("merchant_id", merchantId));
+        // Correctly signed with our passphrase, so only the merchant check can reject it.
+        var body = string.Join("&", fields.Select(f => $"{f.Key}={PayFastSigner.Encode(f.Value)}"))
+            + "&signature=" + PayFastSigner.SignItn(fields, "test-passphrase");
+        var res = await _client.PostAsync("/api/payfast/itn", new StringContent(body, System.Text.Encoding.UTF8, "application/x-www-form-urlencoded"));
+        Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
+        Assert.Contains("Unknown merchant", await res.Content.ReadAsStringAsync());
+        var unpaid = await _client.GetFromJsonAsync<Invoice>($"/api/invoices/{invoice.Id}", Json);
+        Assert.NotEqual(InvoiceStatus.Paid, unpaid!.Status);
     }
 
     [Fact]
