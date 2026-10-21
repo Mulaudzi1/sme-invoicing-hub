@@ -20,6 +20,20 @@ public sealed class PayFastOptions
     /// <summary>PayFast's published sandbox test merchant. Never valid in live mode.</summary>
     public const string SandboxMerchantId = "10000100";
 
+    /// <summary>PayFast's published sandbox test merchant key (not a secret). Never valid in live mode.</summary>
+    public const string SandboxMerchantKey = "46f0cd694581a";
+
+    /// <summary>PayFast's documented passphrase for the public sandbox merchant (not a secret).</summary>
+    public const string SandboxPassphrase = "jt7NOE43FZPn";
+
+    /// <summary>
+    /// The passphrase used for signing and ITN verification. In sandbox mode an empty passphrase falls
+    /// back to PayFast's sandbox passphrase, so an ITN signed without any passphrase never verifies.
+    /// Live mode always uses the configured value (startup refuses to run without one).
+    /// </summary>
+    public string? EffectivePassphrase =>
+        Sandbox && string.IsNullOrWhiteSpace(Passphrase) ? SandboxPassphrase : Passphrase;
+
     /// <summary>
     /// Reasons this configuration is unsafe to run live. Empty in sandbox mode, where the published
     /// test merchant and an empty passphrase are fine. Without a passphrase, live ITN signatures
@@ -33,8 +47,8 @@ public sealed class PayFastOptions
             problems.Add("PayFast:Passphrase must be set when PayFast:Sandbox is false.");
         if (string.IsNullOrWhiteSpace(MerchantId) || MerchantId.Trim() == SandboxMerchantId)
             problems.Add("PayFast:MerchantId must be your live merchant id (not empty, not the sandbox test merchant).");
-        if (string.IsNullOrWhiteSpace(MerchantKey))
-            problems.Add("PayFast:MerchantKey must be set when PayFast:Sandbox is false.");
+        if (string.IsNullOrWhiteSpace(MerchantKey) || MerchantKey.Trim() == SandboxMerchantKey)
+            problems.Add("PayFast:MerchantKey must be your live merchant key (not empty, not the sandbox test key).");
         return problems;
     }
 }
@@ -110,7 +124,7 @@ public static class PayFastSigner
             new("amount", amount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
             new("item_name", itemName),
         };
-        var signature = Sign(fields, options.Passphrase);
+        var signature = Sign(fields, options.EffectivePassphrase);
         var query = string.Join("&", fields.Where(f => !string.IsNullOrEmpty(f.Value)).Select(f => $"{f.Key}={Encode(f.Value)}"));
         return $"{options.ProcessUrl}?{query}&signature={signature}";
     }

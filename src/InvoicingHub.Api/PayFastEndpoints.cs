@@ -18,7 +18,7 @@ public static class PayFastEndpoints
             var fields = ParseForm(body);
             var get = (string key) => fields.FirstOrDefault(f => f.Key == key).Value;
 
-            if (!PayFastSigner.Verify(fields, options.Value.Passphrase, get("signature")))
+            if (!PayFastSigner.Verify(fields, options.Value.EffectivePassphrase, get("signature")))
             {
                 logger.LogWarning("Rejected ITN with invalid signature");
                 return Results.BadRequest(new { message = "Invalid signature." });

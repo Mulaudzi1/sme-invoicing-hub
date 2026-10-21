@@ -12,7 +12,16 @@ builder.Services.Configure<PayFastOptions>(builder.Configuration.GetSection("Pay
 // Fail closed: refuse to start in PayFast live mode without a passphrase or real merchant credentials.
 var payFastProblems = (builder.Configuration.GetSection("PayFast").Get<PayFastOptions>() ?? new PayFastOptions()).LiveConfigProblems();
 if (payFastProblems.Count > 0)
-    throw new InvalidOperationException("Unsafe PayFast live configuration: " + string.Join(" ", payFastProblems));
+{
+    // Log a clear message and exit with code 1, rather than crashing with an unhandled exception.
+    using (var startupLogs = LoggerFactory.Create(b => b.AddSimpleConsole(o => o.SingleLine = true)))
+    {
+        var log = startupLogs.CreateLogger("InvoicingHub.Startup");
+        log.LogCritical("Unsafe PayFast live configuration, refusing to start: {Problems}", string.Join(" ", payFastProblems));
+    }
+    Environment.ExitCode = 1;
+    return;
+}
 builder.Services.AddDbContext<InvoicingDb>(o =>
     o.UseSqlite(builder.Configuration.GetConnectionString("Invoicing") ?? "Data Source=invoicing.db"));
 builder.Services.AddSingleton(TimeProvider.System);

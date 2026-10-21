@@ -76,12 +76,12 @@ Settings live in `src/InvoicingHub.Api/appsettings.json` and can be overridden w
 | `Reminders:ScheduleDays` | `[1, 7, 14]` | Days after the due date to send reminders |
 | `PayFast:Sandbox` | `true` | Use `sandbox.payfast.co.za` and skip server-to-server validation |
 | `PayFast:MerchantId`, `PayFast:MerchantKey` | PayFast's public sandbox test merchant | Your merchant credentials (set via env or secrets) |
-| `PayFast:Passphrase` | empty | Passphrase set on your PayFast account. **Required in live mode** |
+| `PayFast:Passphrase` | empty (sandbox uses PayFast's sandbox passphrase) | Passphrase set on your PayFast account. **Required in live mode**. In sandbox mode an empty value falls back to PayFast's documented sandbox passphrase, so ITNs are always signature-checked with a passphrase |
 | `PayFast:ReturnUrl`, `CancelUrl`, `NotifyUrl` | `http://localhost:8080/...` | Where PayFast sends the buyer and the ITN |
 
 The default PayFast merchant ID and key are PayFast's published sandbox test values, not secrets. Never commit live credentials.
 
-With `PayFast:Sandbox=false` the API **refuses to start** unless `PayFast:Passphrase`, `PayFast:MerchantKey` and a real `PayFast:MerchantId` (not the sandbox `10000100`) are set. Without a passphrase, anyone who knows your merchant id could forge an ITN signature. Sandbox and dev still run with an empty passphrase.
+With `PayFast:Sandbox=false` the API **refuses to start** unless `PayFast:Passphrase` and your real `PayFast:MerchantId` and `PayFast:MerchantKey` are set (not the sandbox `10000100` / `46f0cd694581a`). It logs a `crit` line listing every problem and exits with code 1. Without a passphrase, anyone who knows your merchant id could forge an ITN signature. Sandbox and dev still start with an empty passphrase and use PayFast's sandbox passphrase instead.
 
 ## Roadmap
 
