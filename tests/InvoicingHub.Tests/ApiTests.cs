@@ -114,7 +114,7 @@ public class ApiTests : IClassFixture<ApiFactory>
             new("m_payment_id", invoice.Number!), new("pf_payment_id", "123456"),
             new("payment_status", "COMPLETE"), new("item_name", $"Invoice {invoice.Number}"), new("amount_gross", "575.00"),
         };
-        var signature = PayFastSigner.Sign(fields, "test-passphrase");
+        var signature = PayFastSigner.SignItn(fields, "test-passphrase");
         string Body(string sig) => string.Join("&", fields.Select(f => $"{f.Key}={PayFastSigner.Encode(f.Value)}")) + "&signature=" + sig;
 
         var bad = await _client.PostAsync("/api/payfast/itn", new StringContent(Body("deadbeef"), System.Text.Encoding.UTF8, "application/x-www-form-urlencoded"));
@@ -125,6 +125,24 @@ public class ApiTests : IClassFixture<ApiFactory>
         var paid = await _client.GetFromJsonAsync<Invoice>($"/api/invoices/{invoice.Id}", Json);
         Assert.Equal(InvoiceStatus.Paid, paid!.Status);
         Assert.Equal("123456", paid.PaymentReference);
+    }
+
+    [Fact]
+    public async Task Itn_with_blank_fields_is_accepted()
+    {
+        var invoice = await CreateIssuedInvoice(100m);
+        var fields = new List<KeyValuePair<string, string>>
+        {
+            new("m_payment_id", invoice.Number!), new("pf_payment_id", "777"), new("payment_status", "COMPLETE"),
+            new("item_name", $"Invoice {invoice.Number}"), new("item_description", ""), new("amount_gross", "115.00"),
+            new("name_first", "Test"), new("name_last", ""), new("custom_str1", ""),
+        };
+        var body = string.Join("&", fields.Select(f => $"{f.Key}={PayFastSigner.Encode(f.Value)}"))
+            + "&signature=" + PayFastSigner.SignItn(fields, "test-passphrase");
+        var ok = await _client.PostAsync("/api/payfast/itn", new StringContent(body, System.Text.Encoding.UTF8, "application/x-www-form-urlencoded"));
+        Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
+        var paid = await _client.GetFromJsonAsync<Invoice>($"/api/invoices/{invoice.Id}", Json);
+        Assert.Equal(InvoiceStatus.Paid, paid!.Status);
     }
 
     [Fact]

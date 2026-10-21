@@ -32,7 +32,7 @@ Requires the [.NET 8 SDK](https://dotnet.microsoft.com/download).
 
 ```bash
 dotnet run --project src/InvoicingHub.Api
-# open the Swagger UI at the URL printed in the console
+# http://localhost:8080/swagger (same port as Docker; override with --urls)
 ```
 
 Or with Docker:
@@ -52,7 +52,7 @@ curl -X POST $B/api/invoices -H 'content-type: application/json' \
   -d '{"customerId":1,"dueDate":"2026-11-30","lines":[{"description":"Website build","quantity":1,"unitPriceExclVat":8000},{"description":"Brown bread","quantity":2,"unitPriceExclVat":20,"treatment":"ZeroRated"}]}'
 curl -X POST $B/api/invoices/1/issue
 curl $B/api/invoices/1/payment-link   # PayFast sandbox checkout URL
-open $B/api/invoices/1/html           # printable tax invoice
+curl $B/api/invoices/1/html > invoice.html   # printable tax invoice (open in a browser)
 ```
 
 ## Tests
@@ -77,7 +77,7 @@ Settings live in `src/InvoicingHub.Api/appsettings.json` and can be overridden w
 | `PayFast:Sandbox` | `true` | Use `sandbox.payfast.co.za` and skip server-to-server validation |
 | `PayFast:MerchantId`, `PayFast:MerchantKey` | PayFast's public sandbox test merchant | Your merchant credentials (set via env or secrets) |
 | `PayFast:Passphrase` | empty | Passphrase set on your PayFast account |
-| `PayFast:ReturnUrl`, `CancelUrl`, `NotifyUrl` | localhost | Where PayFast sends the buyer and the ITN |
+| `PayFast:ReturnUrl`, `CancelUrl`, `NotifyUrl` | `http://localhost:8080/...` | Where PayFast sends the buyer and the ITN |
 
 The default PayFast merchant ID and key are PayFast's published sandbox test values, not secrets. Never commit live credentials.
 

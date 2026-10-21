@@ -127,8 +127,25 @@ public class PayFastTests
         var expected = Convert.ToHexString(System.Security.Cryptography.MD5.HashData(
             "merchant_id=10000100&amount=100.00&passphrase=secret"u8.ToArray())).ToLowerInvariant();
         Assert.Equal(expected, PayFastSigner.Sign(fields, "secret"));
-        Assert.True(PayFastSigner.Verify(fields, "secret", expected));
-        Assert.False(PayFastSigner.Verify(fields, "other", expected));
+    }
+
+    [Fact]
+    public void Itn_signature_includes_blank_fields_and_stops_at_signature()
+    {
+        // Regression: PayFast signs ITNs over every posted field, blank ones included.
+        var posted = new List<KeyValuePair<string, string>>
+        {
+            new("m_payment_id", "INV-1"), new("name_last", ""), new("amount_gross", "100.00"), new("custom_str1", ""),
+        };
+        var expected = Convert.ToHexString(System.Security.Cryptography.MD5.HashData(
+            "m_payment_id=INV-1&name_last=&amount_gross=100.00&custom_str1=&passphrase=secret"u8.ToArray())).ToLowerInvariant();
+        Assert.Equal(expected, PayFastSigner.SignItn(posted, "secret"));
+
+        var withSig = posted.Append(new("signature", expected)).Append(new("after", "ignored")).ToList();
+        Assert.True(PayFastSigner.Verify(withSig, "secret", expected));
+        Assert.False(PayFastSigner.Verify(withSig, "other", expected));
+        // The old behaviour (dropping blanks) must not verify.
+        Assert.False(PayFastSigner.Verify(withSig, "secret", PayFastSigner.Sign(posted, "secret")));
     }
 
     [Fact]

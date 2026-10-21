@@ -35,7 +35,7 @@ public static class PayFastSigner
         return sb.ToString();
     }
 
-    /// <summary>Concatenates the non-empty fields in order, appends the passphrase and returns the MD5 hex digest.</summary>
+    /// <summary>Checkout signature: concatenates the non-empty fields in order, appends the passphrase and returns the MD5 hex digest.</summary>
     public static string Sign(IEnumerable<KeyValuePair<string, string>> orderedFields, string? passphrase)
     {
         var parts = orderedFields
@@ -47,10 +47,29 @@ public static class PayFastSigner
         return Convert.ToHexString(hash).ToLowerInvariant();
     }
 
+    /// <summary>
+    /// ITN signature: every field PayFast posted, in posted order, up to (not including) "signature",
+    /// <b>including empty values</b> and without trimming, then the passphrase. This differs from the
+    /// checkout signature (<see cref="Sign"/>), which skips empty fields.
+    /// </summary>
+    public static string SignItn(IEnumerable<KeyValuePair<string, string>> postedFields, string? passphrase)
+    {
+        var parts = new List<string>();
+        foreach (var f in postedFields)
+        {
+            if (f.Key == "signature") break;
+            parts.Add($"{f.Key}={Encode(f.Value ?? "")}");
+        }
+        if (!string.IsNullOrEmpty(passphrase)) parts.Add($"passphrase={Encode(passphrase.Trim())}");
+        var hash = MD5.HashData(Encoding.UTF8.GetBytes(string.Join("&", parts)));
+        return Convert.ToHexString(hash).ToLowerInvariant();
+    }
+
+    /// <summary>Verifies an ITN signature (see <see cref="SignItn"/>).</summary>
     public static bool Verify(IEnumerable<KeyValuePair<string, string>> orderedFields, string? passphrase, string? signature)
     {
         if (string.IsNullOrEmpty(signature)) return false;
-        var expected = Encoding.ASCII.GetBytes(Sign(orderedFields, passphrase));
+        var expected = Encoding.ASCII.GetBytes(SignItn(orderedFields, passphrase));
         var actual = Encoding.ASCII.GetBytes(signature.ToLowerInvariant());
         return CryptographicOperations.FixedTimeEquals(expected, actual);
     }
